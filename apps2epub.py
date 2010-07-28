@@ -1,45 +1,63 @@
+#!/usr/bin/python
+
+import re
+import os
+import sys
+
+from zipfile import ZipFile
+
 BOOK = re.compile(r'Payload/[^\.]+\.[^/]+/book/(.+)')
+APPS_DIR = '~/Music/iTunes/iTunes Media/Mobile Applications'
 
-def extract(ipafile, todir):
-  """Extract EPUB content from an application IPA file"""
-  import os
+def scan(appsdir=APPS_DIR, write=False, target=os.curdir):
   
-  if not os.path.isdir(todir):
-    os.mkdir(todir)
-  os.chdir(todir)
-  for d in ['META-INF', 'mimetype', 'OEBPS']:
-    if not os.path.isdir(d):
-      os.mkdir(d)
-  
-  from zipfile import ZipFile
-  import re
+  """Scan iTunes apps directory for o'reilly (stanza-based) ebook app"""
+  abs_dir = os.path.expanduser(appsdir)
+  print "Scanning for ebook apps under directory: %s" % abs_dir
+  for app in os.listdir(abs_dir):
+    app_file = os.path.join(abs_dir, app)
+    if is_ebook_app(app_file):
+      print "Found '%s'" % app
+      if write:
+        extract(app_file, target)
 
+def is_ebook_app(app):
+  """Detect if an app contains ebook"""
+  z = ZipFile(app, 'r')
+  for name in z.namelist():
+    if BOOK.match(name):
+      return True
+  return False
+  
+def extract(ipafile, target):
+  """Create an EPUB content from an O'reilly ebooks app IPA file"""
+  
+  parent, filename = os.path.split(os.path.realpath(ipafile))
+  epub = os.path.join(target, '%s.epub' % filename[:filename.rfind('.')])
+  
   z = ZipFile(ipafile)
+  print "Creating %s " % epub
+  t = ZipFile(epub, 'w')
+  
   for e in z.namelist():
     m = BOOK.match(e)
     if m:
-      name = os.path.join(todir, m.group(1))
+      name = m.group(1)
       if not os.path.isdir(name):
-        open(name, 'w').write(z.read(e))
-  
-  parent = os.path.join(todir, os.pardir)
-  epub = '%s.epub' % ipafile[:ipafile.rfind('.')]
-  print "Creating %s " % epub
-  t = ZipFile(os.path.join(parent, epub), 'w')
-  
-  for d in os.listdir(os.curdir):
-    for e in os.listdir(d):
-      name = os.path.join(d, e)
-      item = os.path.join(os.path.realpath(os.curdir), name)
-      #print "Processing %s" % item
-      if os.path.isfile(item):
-        print "Adding file %s as %s" % (item, name)
-        t.write(item, name)
-  
+        t.writestr(name, z.read(e))
+
   t.close()
-  
-  os.chdir(os.path.join(os.curdir, os.pardir))
-  
 
 
+
+if __name__ == "__main__":
+  for arg in sys.argv:
+    print arg
+  if len(sys.argv) == 2:
+    target = os.path.realpath(sys.argv[1])
+    print "Target dir: %s" % target
+    scan(write=True, target=target)
+  else:
+    scan()
+    
   
