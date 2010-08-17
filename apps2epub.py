@@ -7,7 +7,7 @@ import sys
 from zipfile import ZipFile
 
 BOOK = re.compile(r'Payload/[^\.]+\.[^/]+/book/(.+)')
-APPS_DIR = '~/Music/iTunes/iTunes Media/Mobile Applications'
+APPS_DIR = '~/Music/iTunes/Mobile Applications'
 
 def scan(appsdir=APPS_DIR, write=False, target=os.curdir):
   
@@ -16,7 +16,7 @@ def scan(appsdir=APPS_DIR, write=False, target=os.curdir):
   print "Scanning for ebook apps under directory: %s" % abs_dir
   for app in os.listdir(abs_dir):
     app_file = os.path.join(abs_dir, app)
-    if is_ebook_app(app_file):
+    if app_file.endswith('.ipa') and is_ebook_app(app_file):
       print "Found '%s'" % app
       if write:
         extract(app_file, target)
